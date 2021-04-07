@@ -1,0 +1,50 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+name: $(TeamProject)_$(BuildDefinitionName)_$(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+variables:
+  vmImageName: 'vs2017-win2016'
+jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: Restore
+      inputs:
+        command: restore
+        projects: '$(Build.SourcesDirectory)/**/*.csproj'
+        feedsToUse: 'config'
+        nugetConfigPath: 'nuget.config'
+
+    - task: DotNetCoreCLI@2
+      displayName: Build
+      inputs:
+        command: 'build'
+        projects: |
+          $(Build.SourcesDirectory)/**/*.csproj
+        arguments: --output $(Build.SourcesDirectory)/publish_output --configuration Release
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Run Unit Testing'
+      inputs:
+        command: test
+        projects: '**/*Test*.csproj'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Generate Nuget Package'
+      inputs:
+        command: pack
+        packDirectory: '$(Build.ArtifactStagingDirectory)/NugetPackage'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact: drop'
+    
